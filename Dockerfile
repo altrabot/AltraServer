@@ -3,12 +3,15 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Install git dan dependencies yang diperlukan
+RUN apk add --no-cache git python3 make g++
+
 # Copy package files first for better caching
 COPY package*.json ./
 COPY prisma ./prisma/
 
 # Install all dependencies including dev dependencies
-RUN npm install
+RUN npm install --no-optional
 
 # Copy source code
 COPY . .
@@ -21,12 +24,15 @@ FROM node:20-alpine AS production
 
 WORKDIR /app
 
+# Install curl untuk health check
+RUN apk add --no-cache curl
+
 # Copy package files
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Install production dependencies only using npm install instead of ci
-RUN npm install --production --ignore-scripts
+# Install production dependencies only
+RUN npm install --production --no-optional --ignore-scripts
 
 # Copy built application from builder stage
 COPY --from=builder /app/dist ./dist
