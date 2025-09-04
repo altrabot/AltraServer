@@ -1,0 +1,193 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  jid         String   @unique
+  name        String?
+  number      String
+  isVerified  Boolean  @default(false)
+  isBanned    Boolean  @default(false)
+  banUntil    DateTime?
+  banReason   String?
+  isPremium   Boolean  @default(false)
+  premiumUntil DateTime?
+  coins       Int      @default(0)
+  level       Int      @default(1)
+  xp          Int      @default(0)
+  warnings    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  groups      GroupUser[]
+  messages    Message[]
+  warningsLog WarningLog[]
+  rentals     Rental[]
+  payments    Payment[]
+  rpgProfile  RPGProfile?
+  inventory   InventoryItem[]
+  commandUsage CommandUsage[]
+}
+
+model Group {
+  id          String   @id @default(cuid())
+  jid         String   @unique
+  name        String?
+  description String?
+  isActive    Boolean  @default(true)
+  antiLink    Boolean  @default(true)
+  antiSpam    Boolean  @default(true)
+  antiBadWord Boolean  @default(true)
+  welcomeMsg  String?
+  goodbyeMsg  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       GroupUser[]
+  messages    Message[]
+  rentals     Rental[]
+}
+
+model GroupUser {
+  id        String   @id @default(cuid())
+  userId    String
+  groupId   String
+  isAdmin   Boolean  @default(false)
+  isMuted   Boolean  @default(false)
+  muteUntil DateTime?
+  messageCount Int    @default(0)
+  warningCount Int    @default(0)
+  joinedAt  DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, groupId])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  content   String?
+  type      String
+  fromMe    Boolean
+  timestamp DateTime
+  userId    String
+  groupId   String?
+
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group     Group?   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+}
+
+model WarningLog {
+  id        String   @id @default(cuid())
+  reason    String
+  severity  Int      @default(1)
+  timestamp DateTime @default(now())
+  userId    String
+  groupId   String?
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group     Group?   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+}
+
+model Rental {
+  id          String   @id @default(cuid())
+  type        String   // hourly, daily, weekly, monthly, yearly, permanent
+  price       Int
+  startDate   DateTime
+  endDate     DateTime
+  status      String   @default("pending") // pending, active, expired
+  paymentId   String?
+  userId      String
+  groupId     String
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group       Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  payment     Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+}
+
+model Payment {
+  id          String   @id @default(cuid())
+  amount      Int
+  method      String   @default("qris")
+  status      String   @default("pending") // pending, completed, failed
+  reference   String?
+  qrUrl       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      String
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rental      Rental?
+}
+
+model RPGProfile {
+  id          String   @id @default(cuid())
+  health      Int      @default(100)
+  maxHealth   Int      @default(100)
+  attack      Int      @default(10)
+  defense     Int      @default(5)
+  stamina     Int      @default(100)
+  job         String?
+  level       Int      @default(1)
+  experience  Int      @default(0)
+  lastWork    DateTime?
+  lastHunt    DateTime?
+  lastFish    DateTime?
+  lastMine    DateTime?
+  userId      String   @unique
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Item {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  type        String   // weapon, armor, consumable, material
+  rarity      String   @default("common") // common, uncommon, rare, epic, legendary
+  price       Int
+  attack      Int?     @default(0)
+  defense     Int?     @default(0)
+  health      Int?     @default(0)
+  stamina     Int?     @default(0)
+  createdAt   DateTime @default(now())
+}
+
+model InventoryItem {
+  id        String   @id @default(cuid())
+  quantity  Int      @default(1)
+  userId    String
+  itemId    String
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item      Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, itemId])
+}
+
+model CommandUsage {
+  id        String   @id @default(cuid())
+  command   String
+  count     Int      @default(1)
+  lastUsed  DateTime @default(now())
+  userId    String
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model SystemConfig {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+}
+
+@@map("system_config")
