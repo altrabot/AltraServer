@@ -3,12 +3,12 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
+# Copy package files first for better caching
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Install all dependencies
-RUN npm ci
+# Install all dependencies including dev dependencies
+RUN npm install
 
 # Copy source code
 COPY . .
@@ -23,13 +23,13 @@ WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
+COPY prisma ./prisma/
 
-# Install production dependencies only
-RUN npm ci --only=production
+# Install production dependencies only using npm install instead of ci
+RUN npm install --production --ignore-scripts
 
-# Copy built application and prisma schema
+# Copy built application from builder stage
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/prisma ./prisma
 
 # Generate Prisma client
 RUN npx prisma generate
