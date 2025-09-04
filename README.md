@@ -28,5 +28,4 @@ Bot WhatsApp multifungsi dengan 200 perintah yang dikelompokkan dalam berbagai k
 
 1. Clone repository
 ```bash
-git clone <repository-url>
-cd AltraBot
+ga ada nyet
