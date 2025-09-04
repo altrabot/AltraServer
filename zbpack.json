@@ -1,0 +1,10 @@
+{
+  "build": {
+    "output": "dist",
+    "nodeVersion": "20"
+  },
+  "deploy": {
+    "startCommand": "npm start",
+    "healthCheckPath": "/healthz"
+  }
+}
