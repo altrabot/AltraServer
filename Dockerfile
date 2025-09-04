@@ -1,23 +1,42 @@
-FROM node:20-alpine
+# Stage 1: Builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Install dependencies
+# Copy package files
 COPY package*.json ./
-RUN npm ci --only=production
+COPY prisma ./prisma/
+
+# Install all dependencies
+RUN npm ci
 
 # Copy source code
 COPY . .
 
-# Build TypeScript
+# Build the project
 RUN npm run build
 
-# Install Prisma
+# Stage 2: Production
+FROM node:20-alpine AS production
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install production dependencies only
+RUN npm ci --only=production
+
+# Copy built application and prisma schema
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/prisma ./prisma
+
+# Generate Prisma client
 RUN npx prisma generate
 
 # Create non-root user
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S altrabot -u 1001
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S altrabot -u 1001
 
 # Change ownership
 RUN chown -R altrabot:nodejs /app
