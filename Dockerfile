@@ -1,41 +1,22 @@
-# Stage 1: Builder
-FROM node:20-alpine AS builder
+FROM node:20-alpine
 
 WORKDIR /app
 
-# Install git untuk builder stage
-RUN apk add --no-cache git
+# Install git
+RUN apk add --no-cache git curl
 
-# Copy package files first for better caching
+# Copy package files dan package-lock.json
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Install all dependencies including dev dependencies
-RUN npm install
+# Gunakan npm ci instead of npm install
+RUN npm ci
 
 # Copy source code
 COPY . .
 
 # Build the project
 RUN npm run build
-
-# Stage 2: Production
-FROM node:20-alpine AS production
-
-WORKDIR /app
-
-# Install git untuk production stage (jika masih diperlukan)
-RUN apk add --no-cache git curl
-
-# Copy package files
-COPY package*.json ./
-COPY prisma ./prisma/
-
-# Install production dependencies only
-RUN npm install --production --ignore-scripts
-
-# Copy built application from builder stage
-COPY --from=builder /app/dist ./dist
 
 # Generate Prisma client
 RUN npx prisma generate
