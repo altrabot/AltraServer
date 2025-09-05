@@ -56,6 +56,7 @@ model Group {
   users       GroupUser[]
   messages    Message[]
   rentals     Rental[]
+  warningsLog WarningLog[]
 
   @@map("groups")
 }
@@ -137,7 +138,7 @@ model Payment {
   userId      String
 
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  rental      Rental?
+  rentals     Rental[]
 
   @@map("payments")
 }
@@ -171,10 +172,12 @@ model Item {
   rarity      String   @default("common") // common, uncommon, rare, epic, legendary
   price       Int
   attack      Int?     @default(0)
-  defense     Int?     @default(0)
+  defense      Int?     @default(0)
   health      Int?     @default(0)
   stamina     Int?     @default(0)
   createdAt   DateTime @default(now())
+
+  inventory   InventoryItem[]
 
   @@map("items")
 }
