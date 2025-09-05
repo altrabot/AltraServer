@@ -12,20 +12,29 @@ export interface Command {
 // Import semua command modules
 import { coreCommands } from './core';
 import { utilityCommands } from './utility';
+import { downloaderCommands } from './downloader';
 
 // Buat commands map
 export const commands = new Map<string, Command>();
 
 // Fungsi untuk register commands
 export function registerCommands(): void {
-  // Register core commands
-  coreCommands.forEach(cmd => {
-    commands.set(cmd.name, cmd);
-  });
+  // Register semua commands
+  const allCommands = [
+    ...coreCommands,
+    ...utilityCommands,
+    ...downloaderCommands
+  ];
 
-  // Register utility commands
-  utilityCommands.forEach(cmd => {
+  allCommands.forEach(cmd => {
     commands.set(cmd.name, cmd);
+    
+    // Register aliases jika ada
+    if (cmd.aliases) {
+      cmd.aliases.forEach(alias => {
+        commands.set(alias, cmd);
+      });
+    }
   });
 
   console.log(`✅ Registered ${commands.size} commands`);
