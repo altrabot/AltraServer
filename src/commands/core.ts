@@ -32,7 +32,6 @@ export const coreCommands: Command[] = [
       const jid = message.key.remoteJid!;
       if (args.length > 0) {
         const commandName = args[0].toLowerCase();
-        // Implementasi detail help nanti
         await sock.sendMessage(jid, {
           text: `📚 *Bantuan: ${commandName}*\n\nFitur help detail sedang dalam pengembangan.`
         });
@@ -132,8 +131,3 @@ export const coreCommands: Command[] = [
     }
   }
 ];
-
-// Tambahkan ke commands map
-coreCommands.forEach(cmd => {
-  commands.set(cmd.name, cmd);
-});
