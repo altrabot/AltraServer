@@ -3,7 +3,7 @@ import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { makeWASocket, useMultiFileAuthState, Browsers, proto } from '@whiskeysockets/baileys';
 import QRCode from 'qrcode';
-import { commands } from './commands';
+import { commands, getCommand } from './commands';
 
 const app = express();
 const prisma = new PrismaClient();
@@ -39,7 +39,7 @@ async function handleMessage(message: proto.IWebMessageInfo) {
     console.log(`Received command: ${commandName} from ${jid}`);
 
     // Cari command
-    const command = commands.get(commandName);
+    const command = getCommand(commandName);
     if (command) {
       await command.execute(whatsappClient, message, args);
     } else {
@@ -53,18 +53,6 @@ async function handleMessage(message: proto.IWebMessageInfo) {
 
   } catch (error) {
     console.error('Error handling message:', error);
-    
-    // Kirim error message ke user
-    try {
-      const jid = message.key.remoteJid;
-      if (jid && whatsappClient) {
-        await whatsappClient.sendMessage(jid, {
-          text: '❌ Terjadi kesalahan saat memproses perintah. Silakan coba lagi nanti.'
-        });
-      }
-    } catch (err) {
-      console.error('Error sending error message:', err);
-    }
   }
 }
 
