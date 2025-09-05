@@ -2,17 +2,17 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install build tools termasuk openssl untuk Prisma
+# Install build tools
 RUN apk add --no-cache git python3 make g++ curl openssl
 
-# Copy package files pertama untuk caching
+# Copy package files
 COPY package.json package-lock.json* ./
 COPY prisma ./prisma/
 
-# Install semua dependencies termasuk dev dependencies untuk ts-node
+# Install semua dependencies
 RUN npm install --no-optional
 
-# Format Prisma schema untuk memastikan validasi
+# Format Prisma schema
 RUN npx prisma format
 
 # Copy semua file source code
@@ -23,6 +23,9 @@ RUN npx prisma generate
 
 # Hapus build tools yang tidak diperlukan
 RUN apk del git python3 make g++
+
+# Create sessions directory
+RUN mkdir -p sessions && chmod 777 sessions
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
@@ -35,5 +38,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:3000/healthz || exit 1
 
-# Gunakan ts-node untuk run langsung tanpa build
-CMD ["npm", "run", "prod"]
+# Gunakan ts-node untuk run langsung
+CMD ["npx", "ts-node", "src/index.ts"]
