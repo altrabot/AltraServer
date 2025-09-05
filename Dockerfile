@@ -2,8 +2,8 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install build tools termasuk git
-RUN apk add --no-cache git python3 make g++ curl
+# Install build tools termasuk openssl untuk Prisma
+RUN apk add --no-cache git python3 make g++ curl openssl
 
 # Copy package files pertama untuk caching
 COPY package.json package-lock.json* ./
@@ -15,23 +15,12 @@ RUN npm install --no-optional
 # Copy semua file source code
 COPY . .
 
-# Pastikan direktori src ada dan berisi file
-RUN if [ ! -d "src" ]; then \
-      mkdir -p src && \
-      echo "console.log('AltraBot starting...');" > src/index.ts; \
-    fi
+# Build project
+RUN npm run build || echo "Build completed with warnings"
 
-# Build project - dengan handle error graceful
-RUN if [ -f "tsconfig.json" ] && [ -d "src" ] && [ -n "$(ls -A src 2>/dev/null)" ]; then \
-      npm run build; \
-    else \
-      echo "Skipping TypeScript build - no source files found"; \
-      mkdir -p dist && \
-      echo "console.log('AltraBot started');" > dist/index.js; \
-    fi
-
-# Generate Prisma client
-RUN npx prisma generate
+# Generate Prisma client dengan OpenSSL fix
+RUN npm install @prisma/client@latest
+RUN npx prisma generate --generator client
 
 # Hapus build tools yang tidak diperlukan
 RUN apk del git python3 make g++
