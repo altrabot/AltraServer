@@ -2,15 +2,16 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install git
-RUN apk add --no-cache git curl
+# Install git, python3, make, g++ untuk build dependencies
+RUN apk add --no-cache git python3 make g++ curl
 
-# Copy package files dan package-lock.json
-COPY package*.json ./
+# Copy package files
+COPY package.json ./
+COPY package-lock.json* ./
 COPY prisma ./prisma/
 
-# Gunakan npm ci instead of npm install
-RUN npm ci
+# Install dependencies menggunakan npm install biasa
+RUN npm install --no-optional
 
 # Copy source code
 COPY . .
@@ -20,6 +21,9 @@ RUN npm run build
 
 # Generate Prisma client
 RUN npx prisma generate
+
+# Hapus build tools yang tidak diperlukan untuk production (optional)
+RUN apk del git python3 make g++
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
