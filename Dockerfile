@@ -12,15 +12,17 @@ COPY prisma ./prisma/
 # Install semua dependencies
 RUN npm install --no-optional
 
+# Format Prisma schema untuk memastikan validasi
+RUN npx prisma format
+
 # Copy semua file source code
 COPY . .
 
 # Build project
 RUN npm run build || echo "Build completed with warnings"
 
-# Generate Prisma client dengan OpenSSL fix
-RUN npm install @prisma/client@latest
-RUN npx prisma generate --generator client
+# Generate Prisma client
+RUN npx prisma generate
 
 # Hapus build tools yang tidak diperlukan
 RUN apk del git python3 make g++
