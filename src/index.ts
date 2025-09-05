@@ -3,7 +3,7 @@ import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { makeWASocket, useMultiFileAuthState, Browsers, proto } from '@whiskeysockets/baileys';
 import QRCode from 'qrcode';
-import { commands, getCommand } from './commands';
+import { commands } from './commands/handler';
 
 const app = express();
 const prisma = new PrismaClient();
@@ -25,30 +25,27 @@ async function handleMessage(message: proto.IWebMessageInfo) {
     const jid = message.key.remoteJid;
     if (!jid) return;
 
+    // Cek jenis pesan
     const messageType = Object.keys(message.message)[0];
     
-    // Hanya handle conversation messages
-    if (messageType !== 'conversation') return;
+    if (messageType === 'conversation') {
+      const text = message.message.conversation?.trim();
+      if (!text || !text.startsWith('.')) return;
 
-    const text = message.message.conversation?.toLowerCase().trim();
-    if (!text || !text.startsWith('.')) return;
+      const commandText = text.substring(1);
+      const [commandName, ...args] = commandText.split(' ');
 
-    const commandText = text.substring(1); // Hilangkan titik
-    const [commandName, ...args] = commandText.split(' ');
+      console.log(`Received command: ${commandName} from ${jid}`);
 
-    console.log(`Received command: ${commandName} from ${jid}`);
-
-    // Cari command
-    const command = getCommand(commandName);
-    if (command) {
-      await command.execute(whatsappClient, message, args);
-    } else {
-      // Jika command tidak ditemukan
-      await whatsappClient.sendMessage(jid, {
-        text: `❌ Perintah "${commandName}" tidak dikenali.\n\n` +
-              'Gunakan `.allmenu` untuk melihat daftar perintah yang tersedia.\n' +
-              'Gunakan `.help` untuk bantuan.'
-      });
+      // Cari command
+      const command = commands.get(commandName.toLowerCase());
+      if (command) {
+        await command.execute(whatsappClient, message, args);
+      } else {
+        await whatsappClient.sendMessage(jid, {
+          text: `❌ Perintah "${commandName}" tidak dikenali. Gunakan .allmenu untuk melihat daftar perintah.`
+        });
+      }
     }
 
   } catch (error) {
@@ -79,13 +76,13 @@ async function initWhatsApp() {
       if (connection === 'open') {
         isConnected = true;
         qrCode = null;
-        console.log('WhatsApp connected successfully!');
+        console.log('✅ WhatsApp connected successfully!');
         whatsappClient.ev.on('creds.update', saveCreds);
       }
 
       if (connection === 'close') {
         isConnected = false;
-        console.log('WhatsApp disconnected, restarting...');
+        console.log('🔄 WhatsApp disconnected, restarting...');
         setTimeout(initWhatsApp, 5000);
       }
     });
@@ -95,7 +92,9 @@ async function initWhatsApp() {
       if (type !== 'notify') return;
 
       for (const message of messages) {
-        await handleMessage(message);
+        if (!message.key.fromMe) {
+          await handleMessage(message);
+        }
       }
     });
 
@@ -108,24 +107,13 @@ async function initWhatsApp() {
 }
 
 // Health check endpoint
-app.get('/healthz', async (req, res) => {
-  try {
-    await prisma.$queryRaw`SELECT 1`;
-    res.status(200).json({ 
-      status: 'OK', 
-      message: 'AltraBot is running',
-      timestamp: new Date().toISOString(),
-      database: 'Connected',
-      whatsapp: isConnected ? 'Connected' : 'Disconnected',
-      commands: 'Ready'
-    });
-  } catch (error) {
-    res.status(500).json({ 
-      status: 'ERROR', 
-      message: 'Database connection failed',
-      timestamp: new Date().toISOString()
-    });
-  }
+app.get('/healthz', (req, res) => {
+  res.status(200).json({ 
+    status: 'OK', 
+    message: 'AltraBot is running',
+    timestamp: new Date().toISOString(),
+    whatsapp: isConnected ? 'Connected' : 'Disconnected'
+  });
 });
 
 // Main endpoint
@@ -137,19 +125,14 @@ app.get('/', (req, res) => {
       <title>AltraBot WhatsApp Bot</title>
       <style>
         body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
-        .status { color: green; font-size: 24px; margin-bottom: 20px; }
-        .container { max-width: 600px; margin: 0 auto; }
-        .connected { color: green; } .disconnected { color: red; }
+        .status { color: green; font-size: 24px; }
       </style>
     </head>
     <body>
-      <div class="container">
-        <h1>🤖 AltraBot WhatsApp Bot</h1>
-        <p class="status">✅ Service is running successfully</p>
-        <p>WhatsApp Status: <span class="${isConnected ? 'connected' : 'disconnected'}">${isConnected ? 'Connected' : 'Disconnected'}</span></p>
-        <p>Commands: <span class="connected">Ready</span></p>
-        <p><a href="/qr">QR Login</a> | <a href="/healthz">Health Check</a></p>
-      </div>
+      <h1>🤖 AltraBot WhatsApp Bot</h1>
+      <p class="status">✅ Service is running</p>
+      <p>WhatsApp: ${isConnected ? '✅ Connected' : '❌ Disconnected'}</p>
+      <p><a href="/qr">QR Login</a></p>
     </body>
     </html>
   `);
@@ -157,78 +140,51 @@ app.get('/', (req, res) => {
 
 // QR endpoint
 app.get('/qr', async (req, res) => {
-  try {
-    if (!qrCode) {
-      return res.send(`
-        <!DOCTYPE html>
-        <html>
-        <head><title>AltraBot - QR Login</title><meta http-equiv="refresh" content="3"></head>
-        <body>
-          <h1>AltraBot QR Login</h1>
-          <p>⏳ Generating QR code, please wait...</p>
-          <script>setTimeout(() => location.reload(), 3000);</script>
-        </body>
-        </html>
-      `);
-    }
-
-    res.send(`
+  if (!qrCode) {
+    return res.send(`
       <!DOCTYPE html>
       <html>
-      <head><title>AltraBot - QR Login</title></head>
+      <head>
+        <title>AltraBot - QR Login</title>
+        <meta http-equiv="refresh" content="3">
+      </head>
       <body>
         <h1>AltraBot QR Login</h1>
-        <img src="${qrCode}" alt="WhatsApp QR Code" style="width: 300px; height: 300px;" />
-        <p>Status: <strong>${isConnected ? '✅ Terhubung' : '❌ Menunggu scan'}</strong></p>
-        ${!isConnected ? '<script>setTimeout(() => location.reload(), 3000);</script>' : ''}
+        <p>⏳ Generating QR code...</p>
+        <script>setTimeout(() => location.reload(), 3000);</script>
       </body>
       </html>
     `);
-
-  } catch (error) {
-    res.status(500).send('Error generating QR code');
   }
+
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head><title>AltraBot - QR Login</title></head>
+    <body>
+      <h1>AltraBot QR Login</h1>
+      <img src="${qrCode}" alt="QR Code" style="width: 300px; height: 300px;">
+      <p>Status: ${isConnected ? '✅ Connected' : '❌ Waiting for scan'}</p>
+      ${!isConnected ? '<script>setTimeout(() => location.reload(), 3000);</script>' : ''}
+    </body>
+    </html>
+  `);
 });
 
 // Start server
-async function startServer() {
-  try {
-    await prisma.$queryRaw`SELECT 1`;
-    console.log('✅ Database connected successfully');
-
-    app.listen(PORT, () => {
-      console.log(`🚀 AltraBot server running on port ${PORT}`);
-      console.log(`📊 Health check: http://localhost:${PORT}/healthz`);
-      console.log(`📱 QR Login: http://localhost:${PORT}/qr`);
-      
-      setTimeout(() => {
-        console.log('🔄 Initializing WhatsApp connection...');
-        initWhatsApp();
-      }, 1000);
-    });
-
-  } catch (error) {
-    console.error('Failed to start server:', error);
-    process.exit(1);
-  }
-}
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📱 QR Login: http://localhost:${PORT}/qr`);
+  setTimeout(initWhatsApp, 1000);
+});
 
 // Graceful shutdown
-process.on('SIGTERM', async () => {
-  console.log('SIGTERM received, shutting down gracefully...');
-  await prisma.$disconnect();
-  if (whatsappClient) await whatsappClient.ws.close();
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down...');
   process.exit(0);
 });
 
-process.on('SIGINT', async () => {
-  console.log('SIGINT received, shutting down gracefully...');
-  await prisma.$disconnect();
-  if (whatsappClient) await whatsappClient.ws.close();
+process.on('SIGINT', () => {
+  console.log('SIGINT received, shutting down...');
   process.exit(0);
 });
-
-// Start the server
-startServer();
-
-export default app;
