@@ -2,29 +2,19 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install build tools
-RUN apk add --no-cache git python3 make g++ curl
+# Install dependencies saja
+RUN apk add --no-cache curl
 
-# Copy package files pertama
-COPY package.json ./
-COPY prisma ./prisma/
-
-# Install dependencies
-RUN npm install --no-optional
-
-# Copy SEMUA file (termasuk source code)
+# Copy semua file
 COPY . .
 
-# Build project - dengan handle error jika ada
-RUN npm run build || echo "Build mungkin gagal, tetapi lanjutkan..."
+# Install npm dependencies
+RUN npm install --production --no-optional
 
 # Generate Prisma client
 RUN npx prisma generate
 
-# Hapus build tools untuk keamanan
-RUN apk del git python3 make g++
-
-# Create non-root user
+# Create user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S altrabot -u 1001
 
@@ -35,4 +25,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:3000/healthz || exit 1
 
-CMD ["npm", "start"]
+# Gunakan ts-node untuk run langsung tanpa build
+CMD ["npx", "ts-node", "src/index.ts"]
