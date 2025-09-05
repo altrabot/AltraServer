@@ -1,33 +1,18 @@
+// src/index.ts
 import 'dotenv/config';
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
 
 const app = express();
-const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3000;
 
-// Health check endpoint dengan database check
-app.get('/healthz', async (req, res) => {
-  try {
-    // Test database connection
-    await prisma.$queryRaw`SELECT 1`;
-    
-    res.status(200).json({ 
-      status: 'OK', 
-      message: 'AltraBot is running with database connected',
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    res.status(500).json({ 
-      status: 'ERROR', 
-      message: 'Database connection failed',
-      error: error.message,
-      timestamp: new Date().toISOString()
-    });
-  }
+app.get('/healthz', (req, res) => {
+  res.status(200).json({ 
+    status: 'OK', 
+    message: 'AltraBot is running',
+    timestamp: new Date().toISOString()
+  });
 });
 
-// Main endpoint
 app.get('/', (req, res) => {
   res.send(`
     <!DOCTYPE html>
@@ -46,7 +31,7 @@ app.get('/', (req, res) => {
         <p class="status">✅ Service is running successfully</p>
         <p>Health check: <a href="/healthz">/healthz</a></p>
         <p>QR Login: <a href="/qr">/qr</a></p>
-        <p>Database: <strong>Connected to Prisma</strong></p>
+        <p>Database: <strong>Prisma PostgreSQL</strong></p>
       </div>
     </body>
     </html>
@@ -55,8 +40,6 @@ app.get('/', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`🚀 AltraBot server running on port ${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/healthz`);
-  console.log(`🔗 Homepage: http://localhost:${PORT}`);
 });
 
 export default app;
