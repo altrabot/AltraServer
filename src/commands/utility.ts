@@ -1,5 +1,5 @@
 import { proto } from '@whiskeysockets/baileys';
-import { Command, commands } from './index';
+import { Command } from './index';
 
 export const utilityCommands: Command[] = [
   {
@@ -35,8 +35,3 @@ export const utilityCommands: Command[] = [
     }
   }
 ];
-
-// Tambahkan ke commands map
-utilityCommands.forEach(cmd => {
-  commands.set(cmd.name, cmd);
-});
