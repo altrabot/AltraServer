@@ -1,5 +1,7 @@
+// schema.prisma
 generator client {
   provider = "prisma-client-js"
+  engineType = "binary"
 }
 
 datasource db {
@@ -33,6 +35,8 @@ model User {
   rpgProfile  RPGProfile?
   inventory   InventoryItem[]
   commandUsage CommandUsage[]
+
+  @@map("users")
 }
 
 model Group {
@@ -52,6 +56,8 @@ model Group {
   users       GroupUser[]
   messages    Message[]
   rentals     Rental[]
+
+  @@map("groups")
 }
 
 model GroupUser {
@@ -69,6 +75,7 @@ model GroupUser {
   group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
   @@unique([userId, groupId])
+  @@map("group_users")
 }
 
 model Message {
@@ -82,6 +89,8 @@ model Message {
 
   user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   group     Group?   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
 }
 
 model WarningLog {
@@ -94,6 +103,8 @@ model WarningLog {
 
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   group     Group?   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@map("warning_logs")
 }
 
 model Rental {
@@ -110,6 +121,8 @@ model Rental {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   group       Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
   payment     Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@map("rentals")
 }
 
 model Payment {
@@ -125,6 +138,8 @@ model Payment {
 
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   rental      Rental?
+
+  @@map("payments")
 }
 
 model RPGProfile {
@@ -144,6 +159,8 @@ model RPGProfile {
   userId      String   @unique
 
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("rpg_profiles")
 }
 
 model Item {
@@ -158,6 +175,8 @@ model Item {
   health      Int?     @default(0)
   stamina     Int?     @default(0)
   createdAt   DateTime @default(now())
+
+  @@map("items")
 }
 
 model InventoryItem {
@@ -170,6 +189,7 @@ model InventoryItem {
   item      Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
   @@unique([userId, itemId])
+  @@map("inventory_items")
 }
 
 model CommandUsage {
@@ -180,6 +200,8 @@ model CommandUsage {
   userId    String
 
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("command_usage")
 }
 
 model SystemConfig {
@@ -188,6 +210,6 @@ model SystemConfig {
   value       String
   description String?
   updatedAt   DateTime @updatedAt
-}
 
-@@map("system_config")
+  @@map("system_config")
+}
